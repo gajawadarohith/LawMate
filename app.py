@@ -85,17 +85,9 @@ def get_conversational_chain():
     return chain
 
 def user_input(user_question, chat_history):
-    try:
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        if os.path.exists("Faiss/index.faiss"):
-            vector_store = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
-            docs = vector_store.similarity_search(user_question)
-        else:
-            docs = []
-    except Exception as e:
-        st.error(f"Error loading vector store: {e}")
-        docs = []
-
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    vector_store = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
+    docs = vector_store.similarity_search(user_question)
     qa_chain = get_conversational_chain()
     response = qa_chain({"input_documents": docs, "chat_history": chat_history, "question": user_question}, return_only_outputs=True)["output_text"]
     return response
@@ -110,6 +102,9 @@ def main():
     if st.sidebar.button("Process Files"):
         ingest_data(uploaded_files)
         
+    if not os.path.exists("Faiss"):
+        st.warning("No data found. Please upload PDF or image files or process the dataset files first.")
+
     # Initialize chat history
     if "messages" not in st.session_state:
         st.session_state.messages = [
