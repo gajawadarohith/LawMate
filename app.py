@@ -16,6 +16,7 @@ import streamlit as st
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
+# Initialize session state variables
 if "vector_store" not in st.session_state:
     st.session_state.vector_store = None
 if "messages" not in st.session_state:
@@ -91,6 +92,10 @@ def get_conversational_chain():
     return chain
 
 def user_input(user_question, chat_history):
+    if st.session_state.vector_store is None:
+        st.error("Vector store is not initialized. Please upload and process the files first.")
+        return "Vector store is not initialized."
+    
     docs = st.session_state.vector_store.similarity_search(user_question)
     qa_chain = get_conversational_chain()
     response = qa_chain({"input_documents": docs, "chat_history": chat_history, "question": user_question}, return_only_outputs=True)["output_text"]
@@ -105,6 +110,10 @@ def main():
     
     if st.sidebar.button("Process Files"):
         ingest_data(uploaded_files)
+
+    if st.session_state.vector_store is None:
+        st.warning("Please upload and process the files to initialize the vector store.")
+        return
 
     # Initialize chat history
     if "messages" not in st.session_state:
