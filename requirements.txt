@@ -12,5 +12,5 @@ faiss-cpu
 langchain_google_genai
 openpyxl
 Pillow
-pytesseract
+pytesseract==0.3.10
 langchain_community
