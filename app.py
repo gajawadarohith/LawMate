@@ -100,9 +100,6 @@ def main():
     
     if st.sidebar.button("Process Files"):
         ingest_data(uploaded_files)
-        
-    if not os.path.exists("Faiss") and "vector_store" not in st.session_state:
-        st.warning("No data found. Please upload PDF or image files or process the dataset files first.")
 
     # Initialize chat history
     if "messages" not in st.session_state:
