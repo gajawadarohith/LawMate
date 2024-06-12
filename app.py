@@ -16,6 +16,8 @@ import streamlit as st
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
 # Functions to process PDF files
 def get_pdf_text(pdf_docs):
     text = ""
