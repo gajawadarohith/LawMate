@@ -16,6 +16,8 @@ import streamlit as st
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
 # Functions to process PDF files
 def get_pdf_text(pdf_docs):
     text = ""
@@ -83,9 +85,14 @@ def get_conversational_chain():
     return chain
 
 def user_input(user_question, chat_history):
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    vector_store = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
-    docs = vector_store.similarity_search(user_question)
+    try:
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        vector_store = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
+        docs = vector_store.similarity_search(user_question)
+    except Exception as e:
+        st.error(f"Error loading vector store: {e}")
+        return "I'm sorry, I couldn't find any relevant information to answer your question."
+
     qa_chain = get_conversational_chain()
     response = qa_chain({"input_documents": docs, "chat_history": chat_history, "question": user_question}, return_only_outputs=True)["output_text"]
     return response
