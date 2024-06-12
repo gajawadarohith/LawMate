@@ -91,11 +91,10 @@ def user_input(user_question, chat_history):
             vector_store = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
             docs = vector_store.similarity_search(user_question)
         else:
-            st.warning("No vector store found. Please upload files and process them first.")
-            return "I'm sorry, I couldn't find any relevant information to answer your question."
+            docs = []
     except Exception as e:
         st.error(f"Error loading vector store: {e}")
-        return "I'm sorry, I couldn't find any relevant information to answer your question."
+        docs = []
 
     qa_chain = get_conversational_chain()
     response = qa_chain({"input_documents": docs, "chat_history": chat_history, "question": user_question}, return_only_outputs=True)["output_text"]
