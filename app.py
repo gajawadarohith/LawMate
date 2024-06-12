@@ -9,7 +9,6 @@ from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 from langchain_community.vectorstores import FAISS
 from dotenv import load_dotenv
-import google.generativeai as genai
 import streamlit as st
 
 # Load environment variables
@@ -23,7 +22,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # Uncomment and set path to Tesseract if not in system PATH
-# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+# pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
 
 # Functions to process PDF files
 def get_pdf_text(pdf_docs):
@@ -43,7 +42,7 @@ def get_image_text(image_files):
     return text
 
 def get_text_chunks(text):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=50000, chunk_overlap=1000)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=5000, chunk_overlap=500)
     chunks = text_splitter.split_text(text)
     return chunks
 
