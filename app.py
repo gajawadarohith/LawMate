@@ -45,7 +45,7 @@ def create_vector_store(text_chunks):
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     vector_store.save_local("Faiss")
 
-def ingest_data():
+def ingest_data(uploaded_files=None):
     if uploaded_files:
         raw_text = ""
         
@@ -63,22 +63,11 @@ def ingest_data():
         text_chunks = get_text_chunks(raw_text)
         create_vector_store(text_chunks)
         st.success("Files processed successfully!")
-    else:
-        # Read files from the dataset folder if no files are uploaded
-        dataset_folder = "dataset"
-        if os.path.exists(dataset_folder):
-            pdf_files = [os.path.join(dataset_folder, file) for file in os.listdir(dataset_folder) if file.endswith(".pdf")]
-            raw_text = get_pdf_text(pdf_files)
-            text_chunks = get_text_chunks(raw_text)
-            create_vector_store(text_chunks)
-            st.success("Files from dataset folder processed successfully!")
-        else:
-            st.warning("No data found. Please upload PDF or image files or create a 'dataset' folder with PDF files.")
 
 def get_conversational_chain():
     prompt_template = """
-    You are Lawy, a highly experienced attorney providing legal advice based on Indian laws. 
-    You will respond to the user's queries by leveraging your legal expertise and the Context Provided.
+    You are LawMate, a highly experienced attorney providing legal advice based on Indian laws. 
+    You will respond to the user's queries by leveraging your legal expertise and the provided information.
     Provide the Section Number for every legal advice.
     Provide Sequential Proceedings for Legal Procedures if to be provided.
     Remember you are an Attorney, so don't provide any other answers that are not related to Law or Legality.
@@ -88,9 +77,9 @@ def get_conversational_chain():
     Answer:
     """
     model = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash-latest", 
-        temperature=0.3, 
-        system_instruction="You are Lawy, a highly experienced attorney providing legal advice based on Indian laws. You will respond to the user's queries by leveraging your legal expertise and the Context Provided.")
+        model="gemini-1.5-flash-latest",
+        temperature=0.3,
+        system_instruction="You are LawMate, a highly experienced attorney providing legal advice based on Indian laws. You will respond to the user's queries by leveraging your legal expertise and the Context Provided.")
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "chat_history", "question"])
     chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
     return chain
@@ -104,8 +93,8 @@ def user_input(user_question, chat_history):
     return response
 
 def main():
-    st.set_page_config("Lawy", page_icon=":scales:")
-    st.header("Lawy: AI Legal Assistant :scales:")
+    st.set_page_config("LawMate", page_icon=":scales:")
+    st.header("LawMate :scales:")
 
     st.sidebar.header("Upload Files")
     uploaded_files = st.sidebar.file_uploader("Upload PDF and Image files", type=["pdf", "png", "jpg", "jpeg"], accept_multiple_files=True)
@@ -119,7 +108,7 @@ def main():
     # Initialize chat history
     if "messages" not in st.session_state:
         st.session_state.messages = [
-            {"role": "assistant", "content": "Hi I'm Lawy, an AI Legal Advisor"}]
+            {"role": "assistant", "content": "Hi, I'm LawMate, an AI Legal Advisor."}]
 
     # Display chat history
     for message in st.session_state.messages:
