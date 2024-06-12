@@ -16,14 +16,7 @@ import streamlit as st
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-# Initialize session state variables
-if "vector_store" not in st.session_state:
-    st.session_state.vector_store = None
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# Uncomment and set path to Tesseract if not in system PATH
-# pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 # Functions to process PDF files
 def get_pdf_text(pdf_docs):
@@ -70,11 +63,13 @@ def ingest_data(uploaded_files=None):
         text_chunks = get_text_chunks(raw_text)
         create_vector_store(text_chunks)
         st.success("Files processed successfully!")
+    else:
+        st.warning("No files uploaded. Please upload PDF or image files.")
 
 def get_conversational_chain():
     prompt_template = """
-    You are LawMate, a highly experienced attorney providing legal advice based on Indian laws. 
-    You will respond to the user's queries by leveraging your legal expertise and the provided information.
+    You are Lawy, a highly experienced attorney providing legal advice based on Indian laws. 
+    You will respond to the user's queries by leveraging your legal expertise and the Context Provided.
     Provide the Section Number for every legal advice.
     Provide Sequential Proceedings for Legal Procedures if to be provided.
     Remember you are an Attorney, so don't provide any other answers that are not related to Law or Legality.
@@ -84,35 +79,38 @@ def get_conversational_chain():
     Answer:
     """
     model = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash-latest",
-        temperature=0.3,
-        system_instruction="You are LawMate, a highly experienced attorney providing legal advice based on Indian laws. You will respond to the user's queries by leveraging your legal expertise and the Context Provided.")
+        model="gemini-1.5-flash-latest", 
+        temperature=0.3, 
+        system_instruction="You are Lawy, a highly experienced attorney providing legal advice based on Indian laws. You will respond to the user's queries by leveraging your legal expertise and the Context Provided.")
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "chat_history", "question"])
     chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
     return chain
 
 def user_input(user_question, chat_history):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    new_db = FAISS.load_local("Faiss", embeddings)
-    docs = new_db.similarity_search(user_question)
-    chain = get_conversational_chain()
-    response = chain({"input_documents": docs, "chat_history": chat_history, "question": user_question}, return_only_outputs=True)
-    return response["output_text"]
+    vector_store = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
+    docs = vector_store.similarity_search(user_question)
+    qa_chain = get_conversational_chain()
+    response = qa_chain({"input_documents": docs, "chat_history": chat_history, "question": user_question}, return_only_outputs=True)["output_text"]
+    return response
 
 def main():
-    st.set_page_config("LawMate", page_icon=":scales:")
-    st.header("LawMate :scales:")
+    st.set_page_config("Lawy", page_icon=":scales:")
+    st.header("Lawy: AI Legal Assistant :scales:")
 
     st.sidebar.header("Upload Files")
     uploaded_files = st.sidebar.file_uploader("Upload PDF and Image files", type=["pdf", "png", "jpg", "jpeg"], accept_multiple_files=True)
     
     if st.sidebar.button("Process Files"):
         ingest_data(uploaded_files)
+        
+    if not os.path.exists("Faiss"):
+        st.warning("No data found. Please upload PDF or image files or process the dataset files first.")
 
     # Initialize chat history
     if "messages" not in st.session_state:
         st.session_state.messages = [
-            {"role": "assistant", "content": "Hi, I'm LawMate, an AI Legal Advisor."}]
+            {"role": "assistant", "content": "Hi I'm Lawy, an AI Legal Advisor"}]
 
     # Display chat history
     for message in st.session_state.messages:
