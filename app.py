@@ -87,8 +87,12 @@ def get_conversational_chain():
 def user_input(user_question, chat_history):
     try:
         embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        vector_store = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
-        docs = vector_store.similarity_search(user_question)
+        if os.path.exists("Faiss/index.faiss"):
+            vector_store = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
+            docs = vector_store.similarity_search(user_question)
+        else:
+            st.warning("No vector store found. Please process the dataset files first.")
+            return "I'm sorry, I couldn't find any relevant information to answer your question."
     except Exception as e:
         st.error(f"Error loading vector store: {e}")
         return "I'm sorry, I couldn't find any relevant information to answer your question."
