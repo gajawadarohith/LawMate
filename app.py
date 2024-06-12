@@ -45,7 +45,7 @@ def create_vector_store(text_chunks):
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     vector_store.save_local("Faiss")
 
-def ingest_data(uploaded_files=None):
+def ingest_data():
     if uploaded_files:
         raw_text = ""
         
@@ -64,7 +64,16 @@ def ingest_data(uploaded_files=None):
         create_vector_store(text_chunks)
         st.success("Files processed successfully!")
     else:
-        st.warning("No files uploaded. Please upload PDF or image files.")
+        # Read files from the dataset folder if no files are uploaded
+        dataset_folder = "dataset"
+        if os.path.exists(dataset_folder):
+            pdf_files = [os.path.join(dataset_folder, file) for file in os.listdir(dataset_folder) if file.endswith(".pdf")]
+            raw_text = get_pdf_text(pdf_files)
+            text_chunks = get_text_chunks(raw_text)
+            create_vector_store(text_chunks)
+            st.success("Files from dataset folder processed successfully!")
+        else:
+            st.warning("No data found. Please upload PDF or image files or create a 'dataset' folder with PDF files.")
 
 def get_conversational_chain():
     prompt_template = """
