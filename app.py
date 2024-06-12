@@ -16,6 +16,11 @@ import streamlit as st
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
+if "vector_store" not in st.session_state:
+    st.session_state.vector_store = None
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
 # Uncomment and set path to Tesseract if not in system PATH
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
