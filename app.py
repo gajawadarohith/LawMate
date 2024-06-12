@@ -44,7 +44,6 @@ def get_text_chunks(text):
 def create_vector_store(text_chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-    vector_store.save_local("Faiss")
     st.session_state.vector_store = vector_store
 
 def ingest_data(uploaded_files=None):
@@ -87,14 +86,7 @@ def get_conversational_chain():
     return chain
 
 def user_input(user_question, chat_history):
-    if "vector_store" in st.session_state:
-        vector_store = st.session_state.vector_store
-    else:
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        vector_store = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
-        st.session_state.vector_store = vector_store
-        
-    docs = vector_store.similarity_search(user_question)
+    docs = st.session_state.vector_store.similarity_search(user_question)
     qa_chain = get_conversational_chain()
     response = qa_chain({"input_documents": docs, "chat_history": chat_history, "question": user_question}, return_only_outputs=True)["output_text"]
     return response
