@@ -43,14 +43,14 @@ def get_image_text(image_files):
     return text
 
 def get_text_chunks(text):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=5000, chunk_overlap=500)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=50000, chunk_overlap=1000)
     chunks = text_splitter.split_text(text)
     return chunks
 
 def create_vector_store(text_chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-    st.session_state.vector_store = vector_store
+    vector_store.save_local("Faiss")
 
 def ingest_data(uploaded_files=None):
     if uploaded_files:
@@ -92,14 +92,12 @@ def get_conversational_chain():
     return chain
 
 def user_input(user_question, chat_history):
-    if st.session_state.vector_store is None:
-        st.error("Vector store is not initialized. Please upload and process the files first.")
-        return "Vector store is not initialized."
-    
-    docs = st.session_state.vector_store.similarity_search(user_question)
-    qa_chain = get_conversational_chain()
-    response = qa_chain({"input_documents": docs, "chat_history": chat_history, "question": user_question}, return_only_outputs=True)["output_text"]
-    return response
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    new_db = FAISS.load_local("Faiss", embeddings)
+    docs = new_db.similarity_search(user_question)
+    chain = get_conversational_chain()
+    response = chain({"input_documents": docs, "chat_history": chat_history, "question": user_question}, return_only_outputs=True)
+    return response["output_text"]
 
 def main():
     st.set_page_config("LawMate", page_icon=":scales:")
@@ -110,10 +108,6 @@ def main():
     
     if st.sidebar.button("Process Files"):
         ingest_data(uploaded_files)
-
-    if st.session_state.vector_store is None:
-        st.warning("Please upload and process the files to initialize the vector store.")
-        return
 
     # Initialize chat history
     if "messages" not in st.session_state:
