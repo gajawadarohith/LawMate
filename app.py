@@ -16,6 +16,7 @@ import streamlit as st
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
+# Uncomment and set path to Tesseract if not in system PATH
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 # Functions to process PDF files
@@ -44,6 +45,7 @@ def create_vector_store(text_chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     vector_store.save_local("Faiss")
+    st.session_state.vector_store = "Faiss"
 
 def ingest_data(uploaded_files=None):
     if uploaded_files:
