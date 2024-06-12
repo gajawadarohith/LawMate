@@ -43,12 +43,11 @@ def get_text_chunks(text):
 def create_vector_store(text_chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-    return vector_store  # Return the vector store instead of saving it
+    return vector_store
 
 def ingest_data(dataset_folder=None):
     if dataset_folder:
         raw_text = ""
-        
         for root, dirs, files in os.walk(dataset_folder):
             for file in files:
                 file_path = os.path.join(root, file)
@@ -65,6 +64,7 @@ def ingest_data(dataset_folder=None):
         st.success("Files processed successfully!")
     else:
         st.warning("Please provide a valid dataset folder path.")
+
 def get_conversational_chain():
     prompt_template = """
     You are LawMate, a highly experienced attorney providing legal advice based on Indian laws. 
@@ -101,12 +101,12 @@ def main():
     st.set_page_config("LawMate", page_icon=":scales:")
     st.header("LawMate :scales:")
 
-    st.sidebar.header("Upload Files")
-    uploaded_files = st.sidebar.file_uploader("Upload PDF and Image files", type=["pdf", "png", "jpg", "jpeg"], accept_multiple_files=True)
-    
-    if st.sidebar.button("Process Files"):
-        ingest_data(uploaded_files)
-        
+    st.sidebar.header("Process Dataset")
+    dataset_folder = st.sidebar.text_input("Enter dataset folder path", "")
+
+    if st.sidebar.button("Process Dataset"):
+        ingest_data(dataset_folder)
+
     # Initialize chat history
     if "messages" not in st.session_state:
         st.session_state.messages = [
@@ -119,7 +119,7 @@ def main():
 
     # Get user input
     user_question = st.chat_input("Type your legal question here:")
-    
+
     if user_question:
         st.session_state.messages.append({"role": "user", "content": user_question})
         with st.chat_message("user"):
