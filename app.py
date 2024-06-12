@@ -43,7 +43,7 @@ def get_text_chunks(text):
 def create_vector_store(text_chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-    vector_store.save_local("Faiss")
+    return vector_store  # Return the vector store instead of saving it
 
 def ingest_data(uploaded_files=None):
     if uploaded_files:
@@ -61,7 +61,8 @@ def ingest_data(uploaded_files=None):
             raw_text += image_text
         
         text_chunks = get_text_chunks(raw_text)
-        create_vector_store(text_chunks)
+        vector_store = create_vector_store(text_chunks)
+        st.session_state.vector_store = vector_store  # Save the vector store in session state
         st.success("Files processed successfully!")
 
 def get_conversational_chain():
@@ -85,8 +86,12 @@ def get_conversational_chain():
     return chain
 
 def user_input(user_question, chat_history):
+    if "vector_store" not in st.session_state:
+        st.warning("Please upload and process files first.")
+        return None
+
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    vector_store = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
+    vector_store = st.session_state.vector_store
     docs = vector_store.similarity_search(user_question)
     qa_chain = get_conversational_chain()
     response = qa_chain({"input_documents": docs, "chat_history": chat_history, "question": user_question}, return_only_outputs=True)["output_text"]
@@ -102,9 +107,6 @@ def main():
     if st.sidebar.button("Process Files"):
         ingest_data(uploaded_files)
         
-    if not os.path.exists("Faiss"):
-        st.warning("No data found. Please upload PDF or image files or process the dataset files first.")
-
     # Initialize chat history
     if "messages" not in st.session_state:
         st.session_state.messages = [
@@ -128,7 +130,8 @@ def main():
                 with st.spinner("Thinking..."):
                     chat_history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in st.session_state.messages])
                     response = user_input(user_question, chat_history)
-                    st.write(response)
+                    if response is not None:
+                        st.write(response)
 
             if response is not None:
                 message = {"role": "assistant", "content": response}
