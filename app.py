@@ -45,26 +45,26 @@ def create_vector_store(text_chunks):
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     return vector_store  # Return the vector store instead of saving it
 
-def ingest_data(uploaded_files=None):
-    if uploaded_files:
+def ingest_data(dataset_folder=None):
+    if dataset_folder:
         raw_text = ""
         
-        pdf_files = [f for f in uploaded_files if f.type == "application/pdf"]
-        image_files = [f for f in uploaded_files if f.type in ["image/png", "image/jpeg", "image/jpg"]]
-        
-        if pdf_files:
-            pdf_text = get_pdf_text([io.BytesIO(pdf.read()) for pdf in pdf_files])
-            raw_text += pdf_text
-
-        if image_files:
-            image_text = get_image_text([io.BytesIO(image.read()) for image in image_files])
-            raw_text += image_text
+        for root, dirs, files in os.walk(dataset_folder):
+            for file in files:
+                file_path = os.path.join(root, file)
+                if file.endswith('.pdf'):
+                    pdf_text = get_pdf_text([open(file_path, 'rb')])
+                    raw_text += pdf_text
+                elif file.endswith('.png') or file.endswith('.jpg') or file.endswith('.jpeg'):
+                    image_text = get_image_text([file_path])
+                    raw_text += image_text
         
         text_chunks = get_text_chunks(raw_text)
         vector_store = create_vector_store(text_chunks)
-        st.session_state.vector_store = vector_store  # Save the vector store in session state
+        st.session_state.vector_store = vector_store
         st.success("Files processed successfully!")
-
+    else:
+        st.warning("Please provide a valid dataset folder path.")
 def get_conversational_chain():
     prompt_template = """
     You are LawMate, a highly experienced attorney providing legal advice based on Indian laws. 
