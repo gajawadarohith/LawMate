@@ -1,0 +1,16 @@
+streamlit
+python-docx
+python-pptx
+pandas
+python-telegram-bot
+google-generativeai
+python-dotenv
+langchain
+PyPDF2
+chromadb
+faiss-cpu
+langchain_google_genai
+openpyxl
+Pillow
+pytesseract
+langchain_community
