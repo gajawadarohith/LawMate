@@ -64,6 +64,8 @@ def ingest_data(uploaded_files=None):
         if raw_text:
             text_chunks = get_text_chunks(raw_text)
             create_vector_store(text_chunks)
+            st.session_state.data_ingested = True
+            st.success("Data ingestion completed successfully.")
         else:
             st.warning("No text extracted from uploaded files.")
 
@@ -84,9 +86,29 @@ def user_input(user_question, chat_history):
     response = qa_chain({"input_documents": docs, "chat_history": chat_history, "question": user_question}, return_only_outputs=True)["output_text"]
     return response
 
+def get_conversational_chain():
+    prompt_template = """
+    You are Lawy, a highly experienced attorney providing legal advice based on Indian laws. 
+    You will respond to the user's queries by leveraging your legal expertise and the Context Provided.
+    Provide the Section Number for every legal advice.
+    Provide Sequential Proceedings for Legal Procedures if to be provided.
+    Remember you are an Attorney, so don't provide any other answers that are not related to Law or Legality.
+    Context: {context}
+    Chat History: {chat_history}
+    Question: {question}
+    Answer:
+    """
+    model = ChatGoogleGenerativeAI(model="chat-bison-001")
+    prompt = PromptTemplate(template=prompt_template, input_variables=["context", "chat_history", "question"])
+    chain = load_qa_chain(model=model, chain_type="stuff", prompt=prompt)
+    return chain
+
 def main():
     st.set_page_config("LawMate", page_icon=":scales:")
     st.header("LawMate :scales:")
+
+    if "data_ingested" not in st.session_state:
+        st.session_state.data_ingested = False
 
     st.sidebar.header("Upload Files")
     uploaded_files = st.sidebar.file_uploader("Upload PDF and Image files", type=["pdf", "png", "jpg", "jpeg"], accept_multiple_files=True)
@@ -94,8 +116,9 @@ def main():
     if st.sidebar.button("Process Files"):
         ingest_data(uploaded_files)
         
-    if not os.path.exists("faiss_index/Faiss"):
+    if not st.session_state.data_ingested:
         st.warning("No data found. Please upload PDF or image files or process the dataset files first.")
+        return
 
     # Initialize chat history
     if "messages" not in st.session_state:
