@@ -49,11 +49,11 @@ def create_vector_store(text_chunks):
     vector_store.save_local("Faiss")
 
 def ingest_data(uploaded_files=None):
-    if uploaded_files or os.path.exists("dataset"):
-        raw_text = ""
+    raw_text = ""
 
-        pdf_files = [f for f in uploaded_files if f.type == "application/pdf"]
-        image_files = [f for f in uploaded_files if f.type in ["image/png", "image/jpeg", "image/jpg"]]
+    if uploaded_files:
+        pdf_files = [pdf for pdf in uploaded_files if pdf.type == "application/pdf"]
+        image_files = [image for image in uploaded_files if image.type in ["image/png", "image/jpeg", "image/jpg"]]
 
         if pdf_files:
             pdf_text = get_pdf_text([io.BytesIO(pdf.read()) for pdf in pdf_files])
@@ -63,10 +63,11 @@ def ingest_data(uploaded_files=None):
             image_text = get_image_text([io.BytesIO(image.read()) for image in image_files])
             raw_text += image_text
 
-        if os.path.exists("dataset"):
-            pdf_files = [os.path.join("dataset", file) for file in os.listdir("dataset") if file.endswith(".pdf")]
-            raw_text += get_pdf_text(pdf_files)
+    if os.path.exists("dataset"):
+        pdf_files = [os.path.join("dataset", file) for file in os.listdir("dataset") if file.endswith(".pdf")]
+        raw_text += get_pdf_text(pdf_files)
 
+    if raw_text:
         text_chunks = get_text_chunks(raw_text)
         create_vector_store(text_chunks)
         st.success("Files processed successfully!")
