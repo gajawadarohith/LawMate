@@ -68,6 +68,8 @@ def ingest_data(uploaded_files=None):
             st.success("Data ingestion completed successfully.")
         else:
             st.warning("No text extracted from uploaded files.")
+    else:
+        st.warning("Please upload PDF or image files to process.")
 
 def user_input(user_question, chat_history):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
@@ -78,9 +80,6 @@ def user_input(user_question, chat_history):
         return "Error: FAISS index not found."
     
     vector_store = FAISS.load_local(vector_store_path, embeddings, allow_dangerous_deserialization=True)
-    
-    # Other logic to handle user question and chat history
-    # For instance:
     docs = vector_store.similarity_search(user_question)
     qa_chain = get_conversational_chain()
     response = qa_chain({"input_documents": docs, "chat_history": chat_history, "question": user_question}, return_only_outputs=True)["output_text"]
@@ -118,7 +117,6 @@ def main():
         
     if not st.session_state.data_ingested:
         st.warning("No data found. Please upload PDF or image files or process the dataset files first.")
-        return
 
     # Initialize chat history
     if "messages" not in st.session_state:
