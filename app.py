@@ -41,20 +41,17 @@ def get_text_chunks(text):
     return chunks
 
 def create_vector_store(text_chunks):
-    if not os.path.exists("Faiss"):
-        os.makedirs("Faiss")
-
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     vector_store.save_local("Faiss")
 
 def ingest_data(uploaded_files=None):
-    raw_text = ""
-
     if uploaded_files:
-        pdf_files = [pdf for pdf in uploaded_files if pdf.type == "application/pdf"]
-        image_files = [image for image in uploaded_files if image.type in ["image/png", "image/jpeg", "image/jpg"]]
-
+        raw_text = ""
+        
+        pdf_files = [f for f in uploaded_files if f.type == "application/pdf"]
+        image_files = [f for f in uploaded_files if f.type in ["image/png", "image/jpeg", "image/jpg"]]
+        
         if pdf_files:
             pdf_text = get_pdf_text([io.BytesIO(pdf.read()) for pdf in pdf_files])
             raw_text += pdf_text
@@ -62,25 +59,18 @@ def ingest_data(uploaded_files=None):
         if image_files:
             image_text = get_image_text([io.BytesIO(image.read()) for image in image_files])
             raw_text += image_text
-
-    if os.path.exists("dataset"):
-        pdf_files = [os.path.join("dataset", file) for file in os.listdir("dataset") if file.endswith(".pdf")]
-        raw_text += get_pdf_text(pdf_files)
-
-    if raw_text:
+        
         text_chunks = get_text_chunks(raw_text)
         create_vector_store(text_chunks)
         st.success("Files processed successfully!")
-    else:
-        st.warning("No files or dataset folder found. Please upload PDF or image files to process.")
 
 def get_conversational_chain():
     prompt_template = """
-    You are LawMate, a highly experienced and professional attorney providing accurate legal advice based on Indian laws. 
-    You will respond to the user's queries by leveraging your legal expertise and the provided information in a knowledgeable and precise manner.
+    You are LawMate, a highly experienced attorney providing legal advice based on Indian laws. 
+    You will respond to the user's queries by leveraging your legal expertise and the provided information.
     Provide the Section Number for every legal advice.
     Provide Sequential Proceedings for Legal Procedures if to be provided.
-    Remember, you are an Attorney, so don't provide any other answers that are not related to Law or Legality.
+    Remember you are an Attorney, so don't provide any other answers that are not related to Law or Legality.
     Context: {context}
     Chat History: {chat_history}
     Question: {question}
@@ -89,37 +79,36 @@ def get_conversational_chain():
     model = ChatGoogleGenerativeAI(
         model="gemini-1.5-flash-latest",
         temperature=0.3,
-        system_instruction="You are LawMate, a highly experienced and professional attorney providing accurate legal advice based on Indian laws. You will respond to the user's queries by leveraging your legal expertise and the Context Provided in a knowledgeable and precise manner.")
+        system_instruction="You are LawMate, a highly experienced attorney providing legal advice based on Indian laws. You will respond to the user's queries by leveraging your legal expertise and the Context Provided.")
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "chat_history", "question"])
     chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
     return chain
 
 def user_input(user_question, chat_history):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    if os.path.exists("Faiss/Faiss.faiss"):
-        vector_store = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
-        docs = vector_store.similarity_search(user_question)
-        qa_chain = get_conversational_chain()
-        response = qa_chain({"input_documents": docs, "chat_history": chat_history, "question": user_question}, return_only_outputs=True)["output_text"]
-        return response
-    else:
-        st.warning("FAISS index not found. Please upload files or process the dataset files first.")
-        return None
+    vector_store = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
+    docs = vector_store.similarity_search(user_question)
+    qa_chain = get_conversational_chain()
+    response = qa_chain({"input_documents": docs, "chat_history": chat_history, "question": user_question}, return_only_outputs=True)["output_text"]
+    return response
 
 def main():
-    st.set_page_config(page_title="LawMate", page_icon=":scales:")
+    st.set_page_config("LawMate", page_icon=":scales:")
     st.header("LawMate :scales:")
 
     st.sidebar.header("Upload Files")
     uploaded_files = st.sidebar.file_uploader("Upload PDF and Image files", type=["pdf", "png", "jpg", "jpeg"], accept_multiple_files=True)
-
+    
     if st.sidebar.button("Process Files"):
         ingest_data(uploaded_files)
+        
+    if not os.path.exists("Faiss"):
+        st.warning("No data found. Please upload PDF or image files or process the dataset files first.")
 
     # Initialize chat history
     if "messages" not in st.session_state:
         st.session_state.messages = [
-            {"role": "assistant", "content": "Hi, I'm LawMate, a professional AI Legal Advisor."}]
+            {"role": "assistant", "content": "Hi, I'm LawMate, an AI Legal Advisor."}]
 
     # Display chat history
     for message in st.session_state.messages:
@@ -128,7 +117,7 @@ def main():
 
     # Get user input
     user_question = st.chat_input("Type your legal question here:")
-
+    
     if user_question:
         st.session_state.messages.append({"role": "user", "content": user_question})
         with st.chat_message("user"):
@@ -139,19 +128,11 @@ def main():
                 with st.spinner("Thinking..."):
                     chat_history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in st.session_state.messages])
                     response = user_input(user_question, chat_history)
-                    if response:
-                        st.write(response)
-                    else:
-                        st.warning("FAISS index not found. Please upload files or process the dataset files first.")
+                    st.write(response)
 
             if response is not None:
                 message = {"role": "assistant", "content": response}
                 st.session_state.messages.append(message)
 
 if __name__ == "__main__":
-    # Check if the FAISS index file exists or if the dataset folder exists
-    if not os.path.exists("Faiss/Faiss.faiss") and os.path.exists("dataset"):
-        # Ingest data from the dataset folder
-        ingest_data()
-
     main()
