@@ -49,7 +49,7 @@ def create_vector_store(text_chunks):
     vector_store.save_local("Faiss")
 
 def ingest_data(uploaded_files=None):
-    if uploaded_files:
+    if uploaded_files or os.path.exists("dataset"):
         raw_text = ""
 
         pdf_files = [f for f in uploaded_files if f.type == "application/pdf"]
@@ -63,21 +63,15 @@ def ingest_data(uploaded_files=None):
             image_text = get_image_text([io.BytesIO(image.read()) for image in image_files])
             raw_text += image_text
 
+        if os.path.exists("dataset"):
+            pdf_files = [os.path.join("dataset", file) for file in os.listdir("dataset") if file.endswith(".pdf")]
+            raw_text += get_pdf_text(pdf_files)
+
         text_chunks = get_text_chunks(raw_text)
         create_vector_store(text_chunks)
         st.success("Files processed successfully!")
     else:
-        # Check if the dataset folder exists
-        dataset_folder = "dataset"
-        if os.path.exists(dataset_folder):
-            # Ingest data from the dataset folder
-            pdf_files = [os.path.join(dataset_folder, file) for file in os.listdir(dataset_folder) if file.endswith(".pdf")]
-            raw_text = get_pdf_text(pdf_files)
-            text_chunks = get_text_chunks(raw_text)
-            create_vector_store(text_chunks)
-            st.success("Dataset files processed successfully!")
-        else:
-            st.warning("No files or dataset folder found. Please upload PDF or image files to process.")
+        st.warning("No files or dataset folder found. Please upload PDF or image files to process.")
 
 def get_conversational_chain():
     prompt_template = """
@@ -154,4 +148,9 @@ def main():
                 st.session_state.messages.append(message)
 
 if __name__ == "__main__":
+    # Check if the FAISS index file exists or if the dataset folder exists
+    if not os.path.exists("Faiss/Faiss.faiss") and os.path.exists("dataset"):
+        # Ingest data from the dataset folder
+        ingest_data()
+
     main()
