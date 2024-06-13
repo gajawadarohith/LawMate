@@ -3,10 +3,9 @@ python-dotenv
 langchain==0.0.123
 PyPDF2
 faiss-cpu
-langchain-google-genai==0.0.2
-openpyxl
+langchain-google-genai
 pytesseract==0.3.10
-python-dateutil==2.8.2
+python-dateutil
 streamlit==1.18.1
-langchain-community==0.0.14
+langchain-community
 Pillow==9.4.0
