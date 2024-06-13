@@ -43,27 +43,26 @@ def get_text_chunks(text):
 def create_vector_store(text_chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-    return vector_store
+    vector_store.save_local("Faiss")
 
-def ingest_data(dataset_folder=None):
-    if dataset_folder:
+def ingest_data(uploaded_files=None):
+    if uploaded_files:
         raw_text = ""
-        for root, dirs, files in os.walk(dataset_folder):
-            for file in files:
-                file_path = os.path.join(root, file)
-                if file.endswith('.pdf'):
-                    pdf_text = get_pdf_text([open(file_path, 'rb')])
-                    raw_text += pdf_text
-                elif file.endswith('.png') or file.endswith('.jpg') or file.endswith('.jpeg'):
-                    image_text = get_image_text([file_path])
-                    raw_text += image_text
+        
+        pdf_files = [f for f in uploaded_files if f.type == "application/pdf"]
+        image_files = [f for f in uploaded_files if f.type in ["image/png", "image/jpeg", "image/jpg"]]
+        
+        if pdf_files:
+            pdf_text = get_pdf_text([io.BytesIO(pdf.read()) for pdf in pdf_files])
+            raw_text += pdf_text
+
+        if image_files:
+            image_text = get_image_text([io.BytesIO(image.read()) for image in image_files])
+            raw_text += image_text
         
         text_chunks = get_text_chunks(raw_text)
-        vector_store = create_vector_store(text_chunks)
-        st.session_state.vector_store = vector_store
+        create_vector_store(text_chunks)
         st.success("Files processed successfully!")
-    else:
-        st.warning("Please provide a valid dataset folder path.")
 
 def get_conversational_chain():
     prompt_template = """
@@ -86,12 +85,8 @@ def get_conversational_chain():
     return chain
 
 def user_input(user_question, chat_history):
-    if "vector_store" not in st.session_state:
-        st.warning("Please upload and process files first.")
-        return None
-
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    vector_store = st.session_state.vector_store
+    vector_store = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
     docs = vector_store.similarity_search(user_question)
     qa_chain = get_conversational_chain()
     response = qa_chain({"input_documents": docs, "chat_history": chat_history, "question": user_question}, return_only_outputs=True)["output_text"]
@@ -101,11 +96,14 @@ def main():
     st.set_page_config("LawMate", page_icon=":scales:")
     st.header("LawMate :scales:")
 
-    st.sidebar.header("Process Dataset")
-    dataset_folder = st.sidebar.text_input("Enter dataset folder path", "")
-
-    if st.sidebar.button("Process Dataset"):
-        ingest_data(dataset_folder)
+    st.sidebar.header("Upload Files")
+    uploaded_files = st.sidebar.file_uploader("Upload PDF and Image files", type=["pdf", "png", "jpg", "jpeg"], accept_multiple_files=True)
+    
+    if st.sidebar.button("Process Files"):
+        ingest_data(uploaded_files)
+        
+    if not os.path.exists("Faiss"):
+        st.warning("No data found. Please upload PDF or image files or process the dataset files first.")
 
     # Initialize chat history
     if "messages" not in st.session_state:
@@ -119,7 +117,7 @@ def main():
 
     # Get user input
     user_question = st.chat_input("Type your legal question here:")
-
+    
     if user_question:
         st.session_state.messages.append({"role": "user", "content": user_question})
         with st.chat_message("user"):
@@ -130,8 +128,7 @@ def main():
                 with st.spinner("Thinking..."):
                     chat_history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in st.session_state.messages])
                     response = user_input(user_question, chat_history)
-                    if response is not None:
-                        st.write(response)
+                    st.write(response)
 
             if response is not None:
                 message = {"role": "assistant", "content": response}
