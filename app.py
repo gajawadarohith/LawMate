@@ -109,6 +109,9 @@ def main():
     if "data_ingested" not in st.session_state:
         st.session_state.data_ingested = False
 
+    if not os.path.exists("Faiss") or not os.path.exists("Faiss/Faiss.faiss"):
+        ingest_data()
+
     st.sidebar.header("Upload Files")
     uploaded_files = st.sidebar.file_uploader("Upload PDF and Image files", type=["pdf", "png", "jpg", "jpeg"], accept_multiple_files=True)
     
