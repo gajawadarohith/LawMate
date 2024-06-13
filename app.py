@@ -63,6 +63,13 @@ def ingest_data(uploaded_files=None):
         text_chunks = get_text_chunks(raw_text)
         create_vector_store(text_chunks)
         st.success("Files processed successfully!")
+    else:
+        # Process files from the dataset folder
+        pdf_files = [os.path.join("dataset", file) for file in os.listdir("dataset") if file.endswith(".pdf")]
+        raw_text = get_pdf_text(pdf_files)
+        text_chunks = get_text_chunks(raw_text)
+        create_vector_store(text_chunks)
+        st.success("Dataset files processed successfully!")
 
 def get_conversational_chain():
     prompt_template = """
@@ -103,7 +110,8 @@ def main():
         ingest_data(uploaded_files)
         
     if not os.path.exists("Faiss"):
-        st.warning("No data found. Please upload PDF or image files or process the dataset files first.")
+        # Process dataset files if Faiss directory doesn't exist
+        ingest_data()
 
     # Initialize chat history
     if "messages" not in st.session_state:
