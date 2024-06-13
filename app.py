@@ -16,7 +16,7 @@ import streamlit as st
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
 
 # Functions to process PDF files
 def get_pdf_text(pdf_docs):
@@ -43,7 +43,8 @@ def get_text_chunks(text):
 def create_vector_store(text_chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-    vector_store.save_local("Faiss")
+    os.makedirs("faiss_index", exist_ok=True)
+    vector_store.save_local("faiss_index/Faiss")
 
 def ingest_data(uploaded_files=None):
     if uploaded_files:
@@ -59,34 +60,25 @@ def ingest_data(uploaded_files=None):
         if image_files:
             image_text = get_image_text([io.BytesIO(image.read()) for image in image_files])
             raw_text += image_text
-        
-        text_chunks = get_text_chunks(raw_text)
-        create_vector_store(text_chunks)
-        st.success("Files processed successfully!")
 
-def get_conversational_chain():
-    prompt_template = """
-    You are LawMate, a highly experienced attorney providing legal advice based on Indian laws. 
-    You will respond to the user's queries by leveraging your legal expertise and the provided information.
-    Provide the Section Number for every legal advice.
-    Provide Sequential Proceedings for Legal Procedures if to be provided.
-    Remember you are an Attorney, so don't provide any other answers that are not related to Law or Legality.
-    Context: {context}
-    Chat History: {chat_history}
-    Question: {question}
-    Answer:
-    """
-    model = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash-latest",
-        temperature=0.3,
-        system_instruction="You are LawMate, a highly experienced attorney providing legal advice based on Indian laws. You will respond to the user's queries by leveraging your legal expertise and the Context Provided.")
-    prompt = PromptTemplate(template=prompt_template, input_variables=["context", "chat_history", "question"])
-    chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
-    return chain
+        if raw_text:
+            text_chunks = get_text_chunks(raw_text)
+            create_vector_store(text_chunks)
+        else:
+            st.warning("No text extracted from uploaded files.")
 
 def user_input(user_question, chat_history):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    vector_store = FAISS.load_local("Faiss", embeddings, allow_dangerous_deserialization=True)
+    vector_store_path = "faiss_index/Faiss"
+    
+    if not os.path.exists(vector_store_path):
+        st.error("FAISS index not found. Please process the dataset files first.")
+        return "Error: FAISS index not found."
+    
+    vector_store = FAISS.load_local(vector_store_path, embeddings, allow_dangerous_deserialization=True)
+    
+    # Other logic to handle user question and chat history
+    # For instance:
     docs = vector_store.similarity_search(user_question)
     qa_chain = get_conversational_chain()
     response = qa_chain({"input_documents": docs, "chat_history": chat_history, "question": user_question}, return_only_outputs=True)["output_text"]
@@ -102,7 +94,7 @@ def main():
     if st.sidebar.button("Process Files"):
         ingest_data(uploaded_files)
         
-    if not os.path.exists("Faiss"):
+    if not os.path.exists("faiss_index/Faiss"):
         st.warning("No data found. Please upload PDF or image files or process the dataset files first.")
 
     # Initialize chat history
