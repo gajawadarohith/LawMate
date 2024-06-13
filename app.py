@@ -107,7 +107,7 @@ def user_input(user_question, chat_history):
         return None
 
 def main():
-    st.set_page_config("LawMate", page_icon=":scales:")
+    st.set_page_config(page_title="LawMate", page_icon=":scales:")
     st.header("LawMate :scales:")
 
     st.sidebar.header("Upload Files")
