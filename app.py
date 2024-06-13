@@ -67,15 +67,25 @@ def ingest_data(uploaded_files=None):
         create_vector_store(text_chunks)
         st.success("Files processed successfully!")
     else:
-        st.warning("No files uploaded. Please upload PDF or image files to process.")
+        # Check if the dataset folder exists
+        dataset_folder = "dataset"
+        if os.path.exists(dataset_folder):
+            # Ingest data from the dataset folder
+            pdf_files = [os.path.join(dataset_folder, file) for file in os.listdir(dataset_folder) if file.endswith(".pdf")]
+            raw_text = get_pdf_text(pdf_files)
+            text_chunks = get_text_chunks(raw_text)
+            create_vector_store(text_chunks)
+            st.success("Dataset files processed successfully!")
+        else:
+            st.warning("No files or dataset folder found. Please upload PDF or image files to process.")
 
 def get_conversational_chain():
     prompt_template = """
-    You are LawMate, a highly experienced attorney providing legal advice based on Indian laws. 
-    You will respond to the user's queries by leveraging your legal expertise and the provided information.
+    You are LawMate, a highly experienced and professional attorney providing accurate legal advice based on Indian laws. 
+    You will respond to the user's queries by leveraging your legal expertise and the provided information in a knowledgeable and precise manner.
     Provide the Section Number for every legal advice.
     Provide Sequential Proceedings for Legal Procedures if to be provided.
-    Remember you are an Attorney, so don't provide any other answers that are not related to Law or Legality.
+    Remember, you are an Attorney, so don't provide any other answers that are not related to Law or Legality.
     Context: {context}
     Chat History: {chat_history}
     Question: {question}
@@ -84,7 +94,7 @@ def get_conversational_chain():
     model = ChatGoogleGenerativeAI(
         model="gemini-1.5-flash-latest",
         temperature=0.3,
-        system_instruction="You are LawMate, a highly experienced attorney providing legal advice based on Indian laws. You will respond to the user's queries by leveraging your legal expertise and the Context Provided.")
+        system_instruction="You are LawMate, a highly experienced and professional attorney providing accurate legal advice based on Indian laws. You will respond to the user's queries by leveraging your legal expertise and the Context Provided in a knowledgeable and precise manner.")
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "chat_history", "question"])
     chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
     return chain
@@ -98,7 +108,7 @@ def user_input(user_question, chat_history):
         response = qa_chain({"input_documents": docs, "chat_history": chat_history, "question": user_question}, return_only_outputs=True)["output_text"]
         return response
     else:
-        st.warning("FAISS index not found. Please process the dataset files first.")
+        st.warning("FAISS index not found. Please upload files or process the dataset files first.")
         return None
 
 def main():
@@ -114,7 +124,7 @@ def main():
     # Initialize chat history
     if "messages" not in st.session_state:
         st.session_state.messages = [
-            {"role": "assistant", "content": "Hi, I'm LawMate, an AI Legal Advisor."}]
+            {"role": "assistant", "content": "Hi, I'm LawMate, a professional AI Legal Advisor."}]
 
     # Display chat history
     for message in st.session_state.messages:
@@ -137,7 +147,7 @@ def main():
                     if response:
                         st.write(response)
                     else:
-                        st.warning("FAISS index not found. Please process the dataset files first.")
+                        st.warning("FAISS index not found. Please upload files or process the dataset files first.")
 
             if response is not None:
                 message = {"role": "assistant", "content": response}
